@@ -7,6 +7,11 @@ import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useFieldArray, useForm, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import {closestCenter, DndContext, DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors} from "@dnd-kit/core"
+import {arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy} from "@dnd-kit/sortable"
+import {restrictToVerticalAxis} from "@dnd-kit/modifiers"
+import {CSS} from "@dnd-kit/utilities"
+import { cn } from "@/lib/utils";
 
 export default function EducationForm({resumeData, setResumeData}: EditorFormProps) {
 
@@ -27,11 +32,29 @@ export default function EducationForm({resumeData, setResumeData}: EditorFormPro
             return unsubscribe;
         }, [form, resumeData, setResumeData]);
 
-        const {fields,append, remove}= useFieldArray({
+        const {fields,append, remove, move}= useFieldArray({
             control: form.control,
             name: "educations",
         });
+
+        const sensors = useSensors(
+            useSensor(PointerSensor),
+            useSensor(KeyboardSensor, {
+                coordinateGetter: sortableKeyboardCoordinates
+            })
+        )
         
+        function handleDragEnd(event: DragEndEvent) {
+            const {active, over} = event
+
+            if (over && active.id !== over.id) {
+                const oldIndex = fields.findIndex(field => field.id === active.id)
+                const newIndex = fields.findIndex(field => field.id === over.id)
+                move(oldIndex, newIndex)
+                return arrayMove(fields, oldIndex, newIndex)
+            }
+        }
+
         return <div className="max-w-xl mx-auto space-y-6">
             <div className="space-y-1.5 text-center">
                 <h2 className="text-2xl font-semibold">Education</h2>
@@ -41,13 +64,27 @@ export default function EducationForm({resumeData, setResumeData}: EditorFormPro
             </div>
             <Form {...form}>
                 <form className="space-y-3">
+                     <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[restrictToVerticalAxis]}
+                    >
+                    <SortableContext
+                    items={fields}
+                    strategy={verticalListSortingStrategy}
+                    >
                     {fields.map((field, index) => (
-                    <EducationItem key={field.id} 
+                    <EducationItem 
+                    id={field.id}
+                    key={field.id} 
                     index={index}
                     form={form}
                     remove={remove}
                     />   
                     ))}
+                    </SortableContext>
+                    </DndContext>
                     <div className="flex justify-center">
                         <Button
                         type="button"
@@ -66,17 +103,37 @@ export default function EducationForm({resumeData, setResumeData}: EditorFormPro
 }
 
 interface EducationItemProps{
+    id: string;
     form: UseFormReturn <EducationValues>;
     index: number;
     remove: (index: number) => void;
 }
 
-function EducationItem ({form, index, remove}: EducationItemProps) {
+function EducationItem ({id, form, index, remove}: EducationItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({id});
+
     return (
-    <div className="space-y-3 border rounded-md bg-background p-3">
+    <div className={cn("space-y-3 border rounded-md bg-background p-3",
+        isDragging && "shadow-xl z-50 cursor-grab relative",
+    )}
+    ref={setNodeRef}
+     style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+    }}>
         <div className="flex justify-between gap-2">
             <span className="font-semibold">Work experience {index + 1}</span>
-            <GripHorizontal className="size-5 cursor-grab text-muted-foreground" />
+            <GripHorizontal className="size-5 cursor-grab text-muted-foreground focus:outline-none" 
+            {...attributes}
+            {...listeners}
+            />
         </div>
         <FormField
         control={form.control}

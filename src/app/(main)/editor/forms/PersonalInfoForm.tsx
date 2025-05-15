@@ -1,9 +1,10 @@
+import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { EditorFormProps } from "@/lib/types";
 import { personalInfoSchema, PersonalInfoValues } from "@/lib/validation"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form"
 
 export default function PersonalInfoForm({resumeData, setResumeData,}: EditorFormProps) {
@@ -29,6 +30,8 @@ export default function PersonalInfoForm({resumeData, setResumeData,}: EditorFor
         return unsubscribe;
     }, [form, resumeData, setResumeData]);
 
+    const photoInputRef = useRef<HTMLInputElement>(null)
+
     return (
     <div className="max-w-xl mx-auto space-y-6">
         <div className="space-y-1.5 text-center">
@@ -45,6 +48,7 @@ export default function PersonalInfoForm({resumeData, setResumeData,}: EditorFor
                 render={({ field: {value, ...fieldValues}}) => (
                     <FormItem>
                         <FormLabel>Your photo</FormLabel>
+                        <div className="flex items-center gap-2">
                         <FormControl>
                             <Input  {...fieldValues}
                             type="file"
@@ -53,8 +57,21 @@ export default function PersonalInfoForm({resumeData, setResumeData,}: EditorFor
                                 const file = e.target.files?.[0]
                                 fieldValues.onChange(file)
                             }}
+                            ref={photoInputRef}
                             />
                         </FormControl>
+                        <Button
+                        variant="secondary"
+                        type="button"
+                        onClick={() => {
+                            fieldValues.onChange(null)
+                            if (photoInputRef.current) {
+                                photoInputRef.current.value = ""
+                            }
+                        }}>
+                            Remove
+                        </Button>
+                        </div>
                         <FormMessage />
                     </FormItem>
                 )}
